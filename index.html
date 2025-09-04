@@ -8,7 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- jsPDF library for PDF generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fo nts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -267,7 +267,7 @@
                 <div id="status-card" class="result-card text-center p-6">
                     <h2 class="text-2xl font-bold" id="status-title"></h2>
                     <p class="text-gray-400 mt-2" id="status-subtitle"></p>
-                    <div id="inconsistencies-list" class="mt-4 text-left text-sm space-y-2"></div>
+                    <div id="points-list" class="mt-4 text-left text-sm space-y-2"></div>
                 </div>
 
                 <!-- AI Analysis Button and Card -->
@@ -405,24 +405,43 @@
             
             const salesVsCashinDiff = cashIn - totalRevenue;
 
-            // --- Inconsistency Checks ---
-            let inconsistencies = [];
-            if (Math.abs(revenueDiff) > 0.01) {
-                inconsistencies.push(`Diferença de ${formatCurrency(revenueDiff)} entre o faturamento esperado e o informado.`);
-            }
-            if (Math.abs(cashDiff) > 0.01) {
-                inconsistencies.push(`Diferença de ${formatCurrency(cashDiff)} entre o dinheiro em mãos e o caixa calculado.`);
-            }
+            // --- NEW LOGIC: Classify issues into critical and warnings ---
+            let criticalIssues = [];
+            let warnings = [];
+
+            // CRITICAL: Not enough money to pay expenses
             if (!canPayAllExpenses) {
-                inconsistencies.push(`As entradas em caixa não são suficientes para cobrir todas as despesas (pagas e a pagar).`);
+                criticalIssues.push({ text: `As entradas em caixa (${formatCurrency(cashIn)}) não são suficientes para cobrir o total de despesas (${formatCurrency(expensesPaid + expensesToPay)}).`, icon: '🔴'});
             }
-            if (salesVsCashinDiff < -0.01) {
-                inconsistencies.push(`Diferença de ${formatCurrency(salesVsCashinDiff)} entre o faturado e o que entrou no caixa (vendas a prazo?).`);
-            } else if (salesVsCashinDiff > 0.01) {
-                inconsistencies.push(`Entrou ${formatCurrency(salesVsCashinDiff)} a mais no caixa do que o faturado (recebimento de dívidas antigas?).`);
+
+            // CRITICAL: Cash on hand is LESS than calculated
+            if (cashDiff < -0.01) {
+                criticalIssues.push({ text: `Faltou ${formatCurrency(Math.abs(cashDiff))} no caixa (contado: ${formatCurrency(cashOnHand)}, calculado: ${formatCurrency(availableCash)}).`, icon: '🔴'});
             }
             
-            const isSuccess = inconsistencies.length === 0;
+            // WARNING: Cash on hand is MORE than calculated
+            if (cashDiff > 0.01) {
+                warnings.push({ text: `Sobrou ${formatCurrency(cashDiff)} no caixa. É preciso investigar a origem dessa diferença.`, icon: '🟡'});
+            }
+            
+            // WARNING: Difference between expected and reported revenue
+            if (Math.abs(revenueDiff) > 0.01) {
+                warnings.push({ text: `Diferença de ${formatCurrency(revenueDiff)} entre o faturamento esperado e o informado.`, icon: '🟡'});
+            }
+
+            // WARNING: Difference between sales and cash in
+            if (salesVsCashinDiff < -0.01) {
+                warnings.push({ text: `Entrou ${formatCurrency(Math.abs(salesVsCashinDiff))} a menos no caixa do que o faturado (vendas a prazo/fiado?).`, icon: '🟡'});
+            } else if (salesVsCashinDiff > 0.01) {
+                warnings.push({ text: `Entrou ${formatCurrency(salesVsCashinDiff)} a mais no caixa do que o faturado (recebimento de dívidas antigas?).`, icon: '🟡'});
+            }
+            
+            let status = 'verde';
+            if (criticalIssues.length > 0) {
+                status = 'vermelho';
+            } else if (warnings.length > 0) {
+                status = 'amarelo';
+            }
 
             // --- Store results for PDF generation ---
             calculatedResults = {
@@ -431,7 +450,7 @@
                 initialStockValue, finalStockValue, potentialStockValue,
                 cashIn, totalExpenses: expensesPaid + expensesToPay, canPayAllExpenses,
                 salesVsCashinDiff,
-                isSuccess, inconsistencies,
+                status, criticalIssues, warnings,
                 notasRecebidas, notasAcumuladas
             };
             
@@ -449,27 +468,36 @@
             const statusTitle = document.getElementById('status-title');
             const statusSubtitle = document.getElementById('status-subtitle');
             const statusCard = document.getElementById('status-card');
-            const inconsistenciesDiv = document.getElementById('inconsistencies-list');
+            const pointsListDiv = document.getElementById('points-list');
             
-            inconsistenciesDiv.innerHTML = '';
+            pointsListDiv.innerHTML = '';
             
-            if (isSuccess) {
+            if (status === 'verde') {
                 statusTitle.textContent = 'Caixa Fechou no Verde!';
                 statusTitle.className = 'text-2xl font-bold text-green-400';
-                statusSubtitle.textContent = 'Parabéns! Todas as contas e o estoque estão consistentes.';
-                statusCard.classList.remove('border-red-500');
-                statusCard.classList.add('border-green-500');
-            } else {
+                statusSubtitle.textContent = 'Parabéns! Todas as contas e o estoque estão consistentes e saudáveis.';
+                statusCard.className = 'result-card text-center p-6 border-2 border-green-500';
+            } else if (status === 'amarelo') {
+                statusTitle.textContent = 'Caixa Fechou no Amarelo!';
+                statusTitle.className = 'text-2xl font-bold text-yellow-400';
+                statusSubtitle.textContent = 'Financeiramente saudável, mas com pontos de atenção para sua gestão:';
+                statusCard.className = 'result-card text-center p-6 border-2 border-yellow-500';
+                warnings.forEach(item => {
+                    const p = document.createElement('p');
+                    p.innerHTML = `${item.icon} <span class="ml-2">${item.text}</span>`;
+                    p.className = 'p-2 bg-gray-700/50 rounded-md';
+                    pointsListDiv.appendChild(p);
+                });
+            } else { // Vermelho
                 statusTitle.textContent = 'Caixa Fechou no Vermelho!';
                 statusTitle.className = 'text-2xl font-bold text-red-400';
-                statusSubtitle.textContent = 'Foram encontradas as seguintes inconsistências:';
-                statusCard.classList.remove('border-green-500');
-                statusCard.classList.add('border-red-500');
-                inconsistencies.forEach(msg => {
+                statusSubtitle.textContent = 'Foram encontrados os seguintes problemas críticos:';
+                statusCard.className = 'result-card text-center p-6 border-2 border-red-500';
+                criticalIssues.forEach(item => {
                     const p = document.createElement('p');
-                    p.innerHTML = `🔴 <span class="ml-2">${msg}</span>`;
+                    p.innerHTML = `${item.icon} <span class="ml-2">${item.text}</span>`;
                     p.className = 'p-2 bg-gray-700/50 rounded-md';
-                    inconsistenciesDiv.appendChild(p);
+                    pointsListDiv.appendChild(p);
                 });
             }
 
@@ -479,14 +507,20 @@
             document.getElementById('reported-revenue').textContent = formatCurrency(totalRevenue);
             const revenueDiffEl = document.getElementById('revenue-diff');
             revenueDiffEl.textContent = formatCurrency(revenueDiff);
-            revenueDiffEl.className = revenueDiff !== 0 ? 'text-red-400 font-mono' : 'text-green-400 font-mono';
+            revenueDiffEl.className = Math.abs(revenueDiff) > 0.01 ? 'text-yellow-400 font-mono' : 'text-green-400 font-mono';
             
             // Cash Summary
             document.getElementById('available-cash').textContent = formatCurrency(availableCash);
             document.getElementById('on-hand-cash').textContent = formatCurrency(cashOnHand);
             const cashDiffEl = document.getElementById('cash-diff');
             cashDiffEl.textContent = formatCurrency(cashDiff);
-            cashDiffEl.className = cashDiff !== 0 ? 'text-red-400 font-mono' : 'text-green-400 font-mono';
+            if (cashDiff < -0.01) {
+                cashDiffEl.className = 'text-red-400 font-mono'; // Critical
+            } else if (cashDiff > 0.01) {
+                cashDiffEl.className = 'text-yellow-400 font-mono'; // Warning
+            } else {
+                 cashDiffEl.className = 'text-green-400 font-mono'; // OK
+            }
             
             const salesVsCashinEl = document.getElementById('sales-vs-cashin');
             salesVsCashinEl.textContent = formatCurrency(salesVsCashinDiff);
@@ -508,7 +542,7 @@
             document.getElementById('health-cash-in').textContent = formatCurrency(cashIn);
             document.getElementById('health-total-expenses').textContent = formatCurrency(expensesPaid + expensesToPay);
             const healthStatusEl = document.getElementById('health-status');
-            healthStatusEl.textContent = canPayAllExpenses ? 'OK' : 'Alerta';
+            healthStatusEl.textContent = canPayAllExpenses ? 'OK' : 'Crítico';
             healthStatusEl.className = canPayAllExpenses ? 'text-green-400 font-mono' : 'text-red-400 font-mono';
 
             // Invoice Summary
@@ -561,30 +595,35 @@
             let currentY = 45;
             doc.setFontSize(16);
             doc.setFont('helvetica', 'bold');
-            if (calculatedResults.isSuccess) {
+            if (calculatedResults.status === 'verde') {
                 doc.setTextColor('#22c55e'); // green-500
                 doc.text('Status: Caixa Fechou no Verde', 20, currentY);
+            } else if (calculatedResults.status === 'amarelo') {
+                 doc.setTextColor('#f59e0b'); // yellow-500
+                doc.text('Status: Caixa Fechou no Amarelo (Com Atenção)', 20, currentY);
             } else {
                 doc.setTextColor('#ef4444'); // red-500
-                doc.text('Status: Caixa Fechou no Vermelho', 20, currentY);
+                doc.text('Status: Caixa Fechou no Vermelho (Crítico)', 20, currentY);
             }
             doc.setTextColor(0, 0, 0); // Reset color to black
             currentY += 10;
 
-            if (!calculatedResults.isSuccess && calculatedResults.inconsistencies.length > 0) {
+            const allPoints = [...calculatedResults.criticalIssues, ...calculatedResults.warnings];
+            if (allPoints.length > 0) {
                 doc.setFontSize(11);
                 doc.setFont('helvetica', 'bold');
-                doc.text('Inconsistências Encontradas:', 20, currentY);
+                doc.text('Pontos de Destaque:', 20, currentY);
                 currentY += 6;
                 doc.setFont('helvetica', 'normal');
-                calculatedResults.inconsistencies.forEach(msg => {
-                    const cleanedMsg = msg.replace(/R\$\s/g, '');
+                allPoints.forEach(item => {
+                    const cleanedMsg = item.text.replace(/R\$\s/g, '');
                     const splitText = doc.splitTextToSize(cleanedMsg, 165); // Wrap text
                     doc.text(`- ${splitText}`, 25, currentY);
                     currentY += (splitText.length * 5);
                 });
             }
             currentY += 5;
+
 
             // --- Data Sections ---
             const salesData = [
@@ -613,7 +652,7 @@
             const healthData = [
                 ['Entradas em Caixa:', formatCurrency(calculatedResults.cashIn)],
                 ['Total de Despesas:', formatCurrency(calculatedResults.totalExpenses)],
-                ['Situação de Pagamentos:', calculatedResults.canPayAllExpenses ? 'OK' : 'Alerta'],
+                ['Situação de Pagamentos:', calculatedResults.canPayAllExpenses ? 'OK' : 'Crítico'],
             ];
             currentY = drawSection('Saúde Financeira', healthData, currentY);
 
@@ -648,31 +687,31 @@
             aiButton.disabled = true;
             aiButton.classList.add('opacity-50', 'cursor-not-allowed');
 
-            const { isSuccess, inconsistencies, revenueDiff, cashDiff, salesVsCashinDiff, canPayAllExpenses } = calculatedResults;
+            const { status, criticalIssues, warnings, canPayAllExpenses } = calculatedResults;
 
             // Construct the prompt for the Gemini API
-            const statusText = isSuccess ? "O caixa fechou no verde, sem inconsistências majoritárias." : "O caixa fechou no vermelho.";
-            let inconsistenciesText = "Nenhuma inconsistência grave encontrada.";
-            if (inconsistencies.length > 0) {
-                inconsistenciesText = `Foram encontradas as seguintes inconsistências: ${inconsistencies.join(' ')}`;
-            }
+            let statusText = '';
+            if (status === 'verde') statusText = "O caixa fechou no verde (sucesso).";
+            if (status === 'amarelo') statusText = "O caixa fechou no amarelo (com pontos de atenção).";
+            if (status === 'vermelho') statusText = "O caixa fechou no vermelho (crítico).";
+            
+            const allPointsText = [...criticalIssues, ...warnings].map(p => p.text).join(' ');
 
             const prompt = `
                 Você é um consultor de negócios especializado em pequenos comércios no Brasil.
                 Analise os seguintes dados de fechamento de caixa de uma distribuidora de água e gás e forneça uma resposta formatada em Markdown simples.
                 A resposta deve ter duas seções com títulos em negrito:
-                1.  **Análise da Situação**: Um parágrafo curto analisando a saúde financeira do negócio este mês.
-                2.  **Plano de Ação**: Uma lista numerada com 3 dicas práticas e acionáveis para melhorar os resultados no próximo mês, baseadas diretamente nos problemas identificados.
+                1.  **Análise da Situação**: Um parágrafo curto analisando a saúde financeira do negócio este mês com base no status final.
+                2.  **Plano de Ação**: Uma lista numerada com 3 dicas práticas e acionáveis para melhorar os resultados no próximo mês, baseadas diretamente nos problemas ou pontos de atenção identificados.
 
-                Se o caixa fechou no verde, as dicas podem ser sobre otimização. Se fechou no vermelho, as dicas devem focar em resolver os problemas.
+                Se o status for 'verde', as dicas podem ser sobre otimização. 
+                Se for 'amarelo', as dicas devem focar em investigar e corrigir as inconsistências.
+                Se for 'vermelho', as dicas devem ser urgentes para resolver a crise financeira.
 
                 **Dados do Fechamento:**
                 - **Status Geral:** ${statusText}
-                - **Diferença de Faturamento (Esperado vs. Informado):** ${formatCurrency(revenueDiff)}
-                - **Diferença de Caixa (Calculado vs. Em Mãos):** ${formatCurrency(cashDiff)}
-                - **Diferença entre Vendas e Entradas no Caixa:** ${formatCSSurrency(salesVsCashinDiff)} (Pode indicar vendas a prazo)
                 - **Capacidade de Pagar Despesas:** ${canPayAllExpenses ? 'Suficiente' : 'Insuficiente'}
-                - **Resumo das Inconsistências:** ${inconsistenciesText}
+                - **Pontos de Destaque:** ${allPointsText || "Nenhum ponto de destaque."}
 
                 Seja direto, prático e use uma linguagem motivadora para um pequeno empresário.
             `;
