@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fechamento de Caixa - Açougue</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- jsPDF library for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom styles for number input arrows */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+        .result-card {
+            background-color: #1f2937; /* bg-gray-800 */
+            border: 1px solid #374151; /* border-gray-700 */
+            border-radius: 0.75rem; /* rounded-xl */
+            padding: 1.5rem; /* p-6 */
+        }
+        /* Tooltip Styles */
+        .tooltip-icon {
+            display: inline-block;
+            margin-left: 6px;
+            background-color: #4b5563; /* bg-gray-600 */
+            color: #d1d5db; /* text-gray-300 */
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            text-align: center;
+            line-height: 16px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: help;
+            position: relative;
+        }
+
+        .tooltip-icon::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 130%; 
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #1f2937; /* bg-gray-800 */
+            color: #e5e7eb; /* text-gray-200 */
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #4b5563; /* border-gray-600 */
+            font-size: 12px;
+            line-height: 1.4;
+            font-weight: normal;
+            white-space: normal; 
+            width: 240px; 
+            text-align: left;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+            z-index: 10;
+        }
+
+        .tooltip-icon::before {
+            content: '';
+            position: absolute;
+            bottom: 130%;
+            margin-bottom: -5px; 
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 5px;
+            border-style: solid;
+            border-color: #4b5563 transparent transparent transparent; 
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+            z-index: 11;
+        }
+
+        .tooltip-icon:hover::after,
+        .tooltip-icon:hover::before {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 min-h-screen p-4 sm:p-6 lg:p-8">
+    <div class="max-w-7xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl sm:text-4xl font-bold text-white">Fechamento de Caixa Mensal - Açougue</h1>
+            <p class="text-gray-400 mt-2">Controle de estoque e financeiro</p>
+        </header>
+
+        <main>
+            <!-- Form for data input -->
+            <form id="cash-form" class="space-y-8">
+                
+                <!-- Products Section -->
+                <fieldset class="border border-gray-700/50 p-4 md:p-6 rounded-lg">
+                    <legend class="text-xl font-semibold px-2 text-gray-300">🥩 Estoque de Produtos (kg)</legend>
+                    <div class="flex flex-wrap justify-center gap-6 mt-4">
+                        
+                        <!-- Card 1: Porco Desossado -->
+                        <div class="p-4 border border-gray-700 rounded-lg w-full sm:w-auto sm:flex-1 sm:min-w-[400px] sm:max-w-lg bg-gray-800/20">
+                            <h4 class="font-semibold mb-3 text-pink-400">🐖 Carne de Porco Desossada</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div><label for="initial-stock-porco-desossado" class="block text-sm font-medium mb-1">Estoque Inicial (kg)<span class="tooltip-icon" data-tooltip="Peso total (kg) deste corte que sobrou do mês anterior.">?</span></label><input type="number" step="0.001" id="initial-stock-porco-desossado" class="w-full bg-gray-800 border-gray-600 rounded-md p-2" placeholder="Ex: 15.5"></div>
+                                <div><label for="remaining-porco-desossado" class="block text-sm font-medium mb-1">Restante no Fim (kg)<span class="tooltip-icon" data-tooltip="Peso total (kg) que sobrou no estoque no final do mês.">?</span></label><input type="number" step="0.001" id="remaining-porco-desossado" class="w-full bg-gray-800 border-gray-600 rounded-md p-2" placeholder="Ex: 10.2"></div>
+                                <div><label for="price-porco-desossado" class="block text-sm font-medium mb-1">Preço Venda (p/ kg)<span class="tooltip-icon" data-tooltip="Preço de venda por quilo.">?</span></label><div class="relative"><div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span class="text-gray-400">R$</span></div><input type="number" step="0.01" id="price-porco-desossado" class="w-full bg-gray-800 border-gray-600 rounded-md p-2 pl-10" placeholder="30.00"></div></div>
+                                <div><label for="sold-porco-desossado" class="block text-sm font-medium text-gray-400 mb-1">Vendido (kg)<span class="tooltip-icon" data-tooltip="Calculado: Estoque Inicial + Entradas - Restante.">?</span></label><input type="number" id="sold-porco-desossado" class="w-full bg-gray-700 border-gray-600 rounded-md p-2" placeholder="Automático" readonly></div>
+                                
+                                <div class="md:col-span-2 mt-2 border-t border-gray-700/50"></div>
+                                <div class="md:col-span-2 text-sm text-gray-400 -mt-2 mb-1">Entradas por Fornecedor:</div>
+
+                                <div><label for="entries-porco-desossado-a" class="block text-sm font-medium mb-1">Entradas Forn. A (kg)<span class="tooltip-icon" data-tooltip="Peso (kg) comprado do Fornecedor A.">?</span></label><input type="number" step="0.001" id="entries-porco-desossado-a" class="w-full bg-gray-800 border-gray-600 rounded-md p-2" placeholder="Ex: 30"></div>
+                                <div><label for="cost-porco-desossado-a" class="block text-sm font-medium mb-1">Custo Forn. A (p/ kg)<span class="tooltip-icon" data-tooltip="Custo por quilo do Fornecedor A.">?</span></label><div class="relative"><div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span class="text-gray-400">R$</span></div><input type="number" step="0.01" id="cost-porco-desossado-a" class="w-full bg-gray-800 border-gray-600 rounded-md p-2 pl-10" placeholder="22.50"></div></div>
+                                <div><label for="entries-porco-desossado-b" class="block text-sm font-medium mb-1">Entradas Forn. B (kg)<span class="tooltip-icon" data-tooltip="Peso (kg) comprado do Fornecedor B.">?</span></label><input type="number" step="0.001" id="entries-porco-desossado-b" class="w-full bg-gray-800 border-gray-600 rounded-md p-2" placeholder="Ex: 20"></div>
+                                <div><label for="cost-porco-desossado-b" class="block text-sm font-medium mb-1">Custo Forn. B (p/ kg)<span class="tooltip-icon" data-tooltip="Custo por quilo do Fornecedor B.">?</span></label><div class="relative"><div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span class="text-gray-400">R$</span></div><input type="number" step="0.01" id="cost-porco-desossado-b" class="w-full bg-gray-800 border-gray-600 rounded-md p-2 pl-10" placeholder="23.00"></div></div>
+                            </div>
+                        </div>
+
+                        <!-- Card 2: Porco com Osso -->
+                        <div class="p-4 border border-gray-700 rounded-lg w-full sm:w-auto sm:flex-1 sm:min-w-[400px] sm:max-w-lg bg-gray-800/20">
+                            <h4 class="font-semibold mb-3 text-pink-400">🐖 Carne de Porco com Osso</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div><label for="initial-stock-porco-osso" class="block text-sm font-medium mb-1">Estoque Inicial (kg)<span class="tooltip-icon" data-tooltip="Peso total (kg) deste corte que sobrou do mês anterior.">?</span></label><input type="number" step="0.001" id="initial-stock-porco-osso" class="w-full bg-gray-800 border-gray-600 rounded-md p-2" placeholder="Ex: 20"></div>
+                                <div><label for="remaining-porco-osso" class="block text-sm font-medium mb-1">Restante no Fim (kg)<span class="tooltip-icon" data-tooltip="Peso total (kg) que sobrou no estoque no final do mês.">?</span></label><input type="number" step="0.001" id="remaining-porco-osso" class="w-full bg-gray-800 border-gray-600 rounded-md p-2" placeholder="Ex: 15"></div>
+                                <div><label for="price-porco-osso" class="block text-sm font-medium mb-1">Preço Venda (p/ kg)<span class="tooltip-icon" data-tooltip="Preço de venda por quilo.">?</span></label><div class="relative"><div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span class="text-gray-400">R$</span></div><input type="number" step="0.01" id="price-porco-osso" class="w-full bg-gray-800 border-gray-600 rounded-md p-2 pl-10" placeholder="25.00"></div></div>
+                                <div><label for="sold-porco-osso" class="block text-sm font-medium text-gray-400 mb-1">Vendido (kg)<span class="tooltip-icon" data-tooltip="Calculado: Estoque Inicial + Entradas - Restante.">?</span></label><input type="number" id="sold-porco-osso" class="w-full bg-gray-700 border-gray-600 rounded-md p-2" placeholder="Automático" readonly></div>
+
+                                <div class="md:col-span-2 mt-2 border-t border-gray-700/50"></div>
+                                <div class="md:col-span-2 text-sm text-gray-400 -mt-2 mb-1">Entradas por Fornecedor:</div>
+
+                                <div><label for="entries-porco-osso-a" class="block text-sm font-medium mb-1">Entradas Forn. A (kg)<span class="tooltip-icon" data-tooltip="Peso (kg) comprado do Fornecedor A.">?</span></label><input type="number" step="0.001" id="entries-porco-osso-a" class="w-full bg-gray-800 border-gray-600 rounded-md p-2" placeholder="Ex: 50"></div>
+                                <div><label for="cost-porco-osso-a" class="block text-sm font-medium mb-1">Custo Forn. A (p/ kg)<span class="tooltip-icon" data-tooltip="Custo por quilo do Fornecedor A.">?</span></label><div class="relative"><div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span class="text-gray-400">R$</span></div><input type="number" step="0.01" id="cost-porco-osso-a" class="w-full bg-gray-800 border-gray-600 rounded-md p-2 pl-10" placeholder="18.00"></div></div>
+                                <div><label for="entries-porco-osso-b" class="block text-sm font-medium mb-1">Entradas Forn. B (kg)<span class="tooltip-icon" data-tooltip="Peso (kg) comprado do Fornecedor B.">?</span></label><input type="number" step="0.001" id="entries-porco-osso-b" class="w-full bg-gray-800 border-gray-600 rounded-md p-2" placeholder="Ex: 30"></div>
+                                <div><label for="cost-porco-osso-b" class="block text-sm font-medium mb-1">Custo Forn. B (p/ kg)<span class="tooltip-icon" data-tooltip="Custo por quilo do Fornecedor B.">?</span></label><div class="relative"><div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span class="text-gray-400">R$</span></div><input type="number" step="0.01" id="cost-porco-osso-b" class="w-full bg-gray-800 border-gray-600 rounded-md p-2 pl-10" placeholder="18.50"></div></div>
+                            </div>
+                        </div>
+
+                        <!-- Card 3: Toucinho -->
+                        <div class="p-4 border border-gray-700 rounded-lg w-full sm:w-auto sm:flex-1 sm:min-w-[400px] sm:max-w-lg bg-gray-800/20">
+                            <h4 class="font-semibold mb-3 text-pink-400">🐖 Toucinho</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div><label for="initial-stock-toucinho" class="block text-sm font-medium mb-1">Estoque Inicial (kg)<span class="tooltip-icon" data-tooltip="Peso total (kg) deste corte que sobrou do mês anterior.">?</span></label><input type="number" step="0.001" id="initial-stock-toucinho" class="w-full bg-gray-800 border-gray-600 rounded-md p-2" placeholder="Ex: 10"></div>
+                                <div><label for="remaining-toucinho" class="block text-sm font-medium mb-1">Restante no Fim (kg)<span class="tooltip-icon" data-tooltip="Peso total (kg) que sobrou no estoque no final do mês.">?</span></label><input type="number" step="0.001" id="remaining-toucinho" class="w-full bg-gray-800 border-gray-600 rounded-md p-2" placeholder="Ex: 8"></div>
+                                <div><label for="price-toucinho" class="block text-sm font-medium mb-1">Preço Venda (p/ kg)<span class="tooltip-icon" data-tooltip="Preço de venda por quilo.">?</span></label><div class="relative"><div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span class="text-gray-400">R$</span></div><input type="number" step="0.01" id="price-toucinho" class="w-full bg-gray-800 border-gray-600 rounded-md p-2 pl-10" placeholder="18.00"></div></div>
+                                <div><label for="sold-toucinho" class="block text-sm font-medium text-gray-400 mb-1">Vendido (kg)<span class="tooltip-icon" data-tooltip="Calculado: Estoque Inicial + Entradas - Restante.">?</span></label><input type="number" id="sold-toucinho" class="w-full bg-gray-700 border-gray-600 rounded-md p-2" placeholder="Automático" readonly></div>
+
+                                <div class="md:col-span-2 mt-2 border-t border-gray-700/50"></div>
+                                <div class="md:col-span-2 text-sm text-gray-400 -mt-2 mb-1">Entradas por Fornecedor:</div>
+
+                                <div><label for="entries-toucinho-a" class="block text-sm font-medium mb-1">Entradas Forn. A (kg)<span class="tooltip-icon" data-tooltip="Peso (kg) comprado do Fornecedor A.">?</span></label><input type="number" step="0.001" id="entries-toucinho-a" class="w-full bg-gray-800 border-gray-600 rounded-md p-2" placeholder="Ex: 25"></div>
+                                <div><label for="cost-toucinho-a" class="block text-sm font-medium mb-1">Custo Forn. A (p/ kg)<span class="tooltip-icon" data-tooltip="Custo por quilo do Fornecedor A.">?</span></label><div class="relative"><div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span class="text-gray-400">R$</span></div><input type="number" step="0.01" id="cost-toucinho-a" class="w-full bg-gray-800 border-gray-600 rounded-md p-2 pl-10" placeholder="12.00"></div></div>
+                                <div><label for="entries-toucinho-b" class="block text-sm font-medium mb-1">Entradas Forn. B (kg)<span class="tooltip-icon" data-tooltip="Peso (kg) comprado do Fornecedor B.">?</span></label><input type="number" step="0.001" id="entries-toucinho-b" class="w-full bg-gray-800 border-gray-600 rounded-md p-2" placeholder="Ex: 15"></div>
+                                <div><label for="cost-toucinho-b" class="block text-sm font-medium mb-1">Custo Forn. B (p/ kg)<span class="tooltip-icon" data-tooltip="Custo por quilo do Fornecedor B.">?</span></label><div class="relative"><div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span class="text-gray-400">R$</span></div><input type="number" step="0.01" id="cost-toucinho-b" class="w-full bg-gray-800 border-gray-600 rounded-md p-2 pl-10" placeholder="11.50"></div></div>
+                            </div>
+                        </div>
+
+                        <!-- Card 4: Coxão de Carneiro -->
+                        <div class="p-4 border border-gray-700 rounded-lg w-full sm:w-auto sm:flex-1 sm:min-w-[400px] sm:max-w-lg bg-gray-800/20">
+                            <h4 class="font-semibold mb-3 text-lime-400">🐑 Coxão de Carneiro</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div><label for="initial-stock-carneiro-coxao" class="block text-sm font-medium mb-1">Estoque Inicial (kg)<span class="tooltip-icon" data-tooltip="Peso total (kg) deste corte que sobrou do mês anterior.">?</span></label><input type="number" step="0.001" id="initial-stock-carneiro-coxao" class="w-full bg-gray-800 border-gray-600 rounded-md p-2" placeholder="Ex: 8"></div>
+                                <div><label for="entries-carneiro-coxao" class="block text-sm font-medium mb-1">Entradas no Mês (kg)<span class="tooltip-icon" data-tooltip="Peso total (kg) deste corte comprado durante o mês.">?</span></label><input type="number" step="0.001" id="entries-carneiro-coxao" class="w-full bg-gray-800 border-gray-600 rounded-md p-2" placeholder="Ex: 20"></div>
+                                <div><label for="remaining-carneiro-coxao" class="block text-sm font-medium mb-1">Restante no Fim (kg)<span class="tooltip-icon" data-tooltip="Peso total (kg) que sobrou no estoque no final do mês.">?</span></label><input type="number" step="0.001" id="remaining-carneiro-coxao" class="w-full bg-gray-800 border-gray-600 rounded-md p-2" placeholder="Ex: 5"></div>
+                                <div><label for="sold-carneiro-coxao" class="block text-sm font-medium text-gray-400 mb-1">Vendido (kg)<span class="tooltip-icon" data-tooltip="Calculado: Estoque Inicial + Entradas - Restante.">?</span></label><input type="number" id="sold-carneiro-coxao" class="w-full bg-gray-700 border-gray-600 rounded-md p-2" placeholder="Automático" readonly></div>
+                                <div><label for="price-carneiro-coxao" class="block text-sm font-medium mb-1">Preço Venda (p/ kg)<span class="tooltip-icon" data-tooltip="Preço de venda por quilo.">?</span></label><div class="relative"><div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span class="text-gray-400">R$</span></div><input type="number" step="0.01" id="price-carneiro-coxao" class="w-full bg-gray-800 border-gray-600 rounded-md p-2 pl-10" placeholder="55.00"></div></div>
+                                <div><label for="cost-carneiro-coxao" class="block text-sm font-medium mb-1">Custo Compra (p/ kg)<span class="tooltip-icon" data-tooltip="Custo de compra por quilo.">?</span></label><div class="relative"><div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span class="text-gray-400">R$</span></div><input type="number" step="0.01" id="cost-carneiro-coxao" class="w-full bg-gray-800 border-gray-600 rounded-md p-2 pl-10" placeholder="40.00"></div></div>
+                            </div>
+                        </div>
+
+                        <!-- Card 5: Carneiro (Outros) -->
+                        <div class="p-4 border border-gray-700 rounded-lg w-full sm:w-auto sm:flex-1 sm:min-w-[400px] sm:max-w-lg bg-gray-800/20">
+                            <h4 class="font-semibold mb-3 text-lime-400">🐑 Carne de Carneiro (Outros)</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div><label for="initial-stock-carneiro-geral" class="block text-sm font-medium mb-1">Estoque Inicial (kg)<span class="tooltip-icon" data-tooltip="Peso total (kg) deste corte que sobrou do mês anterior.">?</span></label><input type="number" step="0.001" id="initial-stock-carneiro-geral" class="w-full bg-gray-800 border-gray-600 rounded-md p-2" placeholder="Ex: 12"></div>
+                                <div><label for="entries-carneiro-geral" class="block text-sm font-medium mb-1">Entradas no Mês (kg)<span class="tooltip-icon" data-tooltip="Peso total (kg) deste corte comprado durante o mês.">?</span></label><input type="number" step="0.001" id="entries-carneiro-geral" class="w-full bg-gray-800 border-gray-600 rounded-md p-2" placeholder="Ex: 30"></div>
+                                <div><label for="remaining-carneiro-geral" class="block text-sm font-medium mb-1">Restante no Fim (kg)<span class="tooltip-icon" data-tooltip="Peso total (kg) que sobrou no estoque no final do mês.">?</span></label><input type="number" step="0.001" id="remaining-carneiro-geral" class="w-full bg-gray-800 border-gray-600 rounded-md p-2" placeholder="Ex: 10"></div>
+                                <div><label for="sold-carneiro-geral" class="block text-sm font-medium text-gray-400 mb-1">Vendido (kg)<span class="tooltip-icon" data-tooltip="Calculado: Estoque Inicial + Entradas - Restante.">?</span></label><input type="number" id="sold-carneiro-geral" class="w-full bg-gray-700 border-gray-600 rounded-md p-2" placeholder="Automático" readonly></div>
+                                <div><label for="price-carneiro-geral" class="block text-sm font-medium mb-1">Preço Venda (p/ kg)<span class="tooltip-icon" data-tooltip="Preço de venda por quilo.">?</span></label><div class="relative"><div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span class="text-gray-400">R$</span></div><input type="number" step="0.01" id="price-carneiro-geral" class="w-full bg-gray-800 border-gray-600 rounded-md p-2 pl-10" placeholder="48.00"></div></div>
+                                <div><label for="cost-carneiro-geral" class="block text-sm font-medium mb-1">Custo Compra (p/ kg)<span class="tooltip-icon" data-tooltip="Custo de compra por quilo.">?</span></label><div class="relative"><div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span class="text-gray-400">R$</span></div><input type="number" step="0.01" id="cost-carneiro-geral" class="w-full bg-gray-800 border-gray-600 rounded-md p-2 pl-10" placeholder="35.00"></div></div>
+                            </div>
+                        </div>
+
+                    </div>
+                </fieldset>
+
+                <!-- Financial Section -->
+                <fieldset class="border border-gray-700 p-6 rounded-lg">
+                    <legend class="text-xl font-semibold px-2 text-emerald-400">💰 Financeiro</legend>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-4">
+                        <div>
+                            <label for="total-revenue" class="block text-sm font-medium text-gray-300 mb-1">Faturamento Informado<span class="tooltip-icon" data-tooltip="Digite o valor total de todas as vendas registradas no seu sistema ou planilha durante o mês. Será comparado com o 'Faturamento Esperado'.">?</span></label>
+                             <div class="relative">
+                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span class="text-gray-400 sm:text-sm">R$</span></div>
+                                <input type="number" step="0.01" id="total-revenue" class="w-full bg-gray-800 border-gray-600 rounded-md p-2 pl-10 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="25000.00">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="cash-in" class="block text-sm font-medium text-gray-300 mb-1">Entradas em Caixa<span class="tooltip-icon" data-tooltip="Informe todo o dinheiro que efetivamente entrou no caixa (dinheiro, pix, cartão). Pode ser diferente do faturamento se houver vendas a prazo.">?</span></label>
+                            <div class="relative">
+                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span class="text-gray-400 sm:text-sm">R$</span></div>
+                                <input type="number" step="0.01" id="cash-in" class="w-full bg-gray-800 border-gray-600 rounded-md p-2 pl-10 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="24500.00">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="expenses-paid" class="block text-sm font-medium text-gray-300 mb-1">Despesas Pagas<span class="tooltip-icon" data-tooltip="Some todas as despesas que foram pagas durante o mês (aluguel, salários, fornecedores, etc.).">?</span></label>
+                             <div class="relative">
+                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span class="text-gray-400 sm:text-sm">R$</span></div>
+                                <input type="number" step="0.01" id="expenses-paid" class="w-full bg-gray-800 border-gray-600 rounded-md p-2 pl-10 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="2000.00">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="cash-on-hand" class="block text-sm font-medium text-gray-300 mb-1">Dinheiro em Mãos no Fim<span class="tooltip-icon" data-tooltip="Informe o valor total em dinheiro físico e em contas no final do mês. Será comparado com o caixa calculado (Entradas - Despesas Pagas).">?</span></label>
+                            <div class="relative">
+                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span class="text-gray-400 sm:text-sm">R$</span></div>
+                                <input type="number" step="0.01" id="cash-on-hand" class="w-full bg-gray-800 border-gray-600 rounded-md p-2 pl-10 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="22500.00">
+                            </div>
+                        </div>
+                         <div>
+                            <label for="expenses-to-pay" class="block text-sm font-medium text-gray-300 mb-1">Despesas a Pagar<span class="tooltip-icon" data-tooltip="Liste as despesas do mês que ainda não foram pagas e vencerão em breve.">?</span></label>
+                            <div class="relative">
+                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span class="text-gray-400 sm:text-sm">R$</span></div>
+                                <input type="number" step="0.01" id="expenses-to-pay" class="w-full bg-gray-800 border-gray-600 rounded-md p-2 pl-10 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="500.00">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="notas-recebidas" class="block text-sm font-medium text-gray-300 mb-1">Notas Recebidas<span class="tooltip-icon" data-tooltip="Informe o valor total das notas fiscais de compra de mercadorias que você recebeu de fornecedores durante este mês.">?</span></label>
+                            <div class="relative">
+                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span class="text-gray-400 sm:text-sm">R$</span></div>
+                                <input type="number" step="0.01" id="notas-recebidas" class="w-full bg-gray-800 border-gray-600 rounded-md p-2 pl-10 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="15000.00">
+                            </div>
+                        </div>
+                        <div class="sm:col-span-2 lg:col-span-1">
+                            <label for="notas-acumuladas" class="block text-sm font-medium text-gray-300 mb-1">Notas Acumuladas no Mês<span class="tooltip-icon" data-tooltip="Valor total de notas fiscais de fornecedores que estão em aberto para pagamento, somando as notas deste mês com as de meses anteriores.">?</span></label>
+                            <div class="relative">
+                                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3"><span class="text-gray-400 sm:text-sm">R$</span></div>
+                                <input type="number" step="0.01" id="notas-acumuladas" class="w-full bg-gray-800 border-gray-600 rounded-md p-2 pl-10 text-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="15500.00">
+                            </div>
+                        </div>
+                    </div>
+                </fieldset>
+                
+                <div class="text-center pt-4">
+                    <button type="button" id="calculate-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-transform transform hover:scale-105">
+                        Fechar Caixa
+                    </button>
+                </div>
+            </form>
+
+            <!-- Results Section -->
+            <div id="results-section" class="hidden mt-10 space-y-6">
+                <div id="status-card" class="result-card text-center p-6">
+                    <h2 class="text-2xl font-bold" id="status-title"></h2>
+                    <p class="text-gray-400 mt-2" id="status-subtitle"></p>
+                    <div id="points-list" class="mt-4 text-left text-sm space-y-2"></div>
+                </div>
+
+                <!-- AI Analysis Button and Card -->
+                <div id="ai-analysis-container" class="hidden text-center">
+                    <button type="button" id="ai-analysis-btn" class="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-transform transform hover:scale-105">
+                        ✨ Obter Análise e Dicas com IA
+                    </button>
+                </div>
+
+                <div id="ai-analysis-card" class="hidden result-card">
+                     <h3 class="text-lg font-semibold text-white border-b border-gray-700 pb-2 mb-4 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2 text-purple-400"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path><path d="M5 3v4"></path><path d="M19 17v4"></path><path d="M3 5h4"></path><path d="M17 19h4"></path></svg>
+                        Análise da IA
+                    </h3>
+                    <div id="ai-analysis-content" class="text-gray-300 space-y-4"></div>
+                </div>
+
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="result-card space-y-3"><h3 class="text-lg font-semibold text-white border-b border-gray-700 pb-2">Resumo de Vendas</h3><p class="flex justify-between"><span>Total Vendido (Calculado):<span class="tooltip-icon" data-tooltip="Valor total que deveria ter sido faturado com base na quantidade de produtos vendidos e o preço de venda.">?</span></span> <span class="font-mono" id="total-sold"></span></p><p class="flex justify-between"><span>Faturamento Esperado:<span class="tooltip-icon" data-tooltip="Representa a receita ideal com base no seu controle de estoque. É o mesmo que 'Total Vendido'.">?</span></span> <span class="font-mono" id="expected-revenue"></span></p><p class="flex justify-between"><span>Faturamento Informado:<span class="tooltip-icon" data-tooltip="Este é o valor total de vendas que você inseriu manualmente. Deve ser próximo do 'Faturamento Esperado'.">?</span></span> <span class="font-mono" id="reported-revenue"></span></p><p class="flex justify-between font-bold"><span>Diferença Faturamento:<span class="tooltip-icon" data-tooltip="Mostra se o seu faturamento informado foi maior (positivo) ou menor (negativo) que o esperado. Diferenças negativas podem indicar perdas ou erros de registro.">?</span></span> <span class="font-mono" id="revenue-diff"></span></p></div>
+                    <div class="result-card space-y-3"><h3 class="text-lg font-semibold text-white border-b border-gray-700 pb-2">Resumo de Caixa</h3><p class="flex justify-between"><span>Dinheiro Disponível (Calc.):<span class="tooltip-icon" data-tooltip="Resultado de 'Entradas em Caixa - Despesas Pagas'. É o valor que, teoricamente, deveria estar no seu caixa.">?</span></span> <span class="font-mono" id="available-cash"></span></p><p class="flex justify-between"><span>Dinheiro em Mãos (Inf.):<span class="tooltip-icon" data-tooltip="O valor que você informou ter contado no caixa. Deve ser igual ao 'Dinheiro Disponível'.">?</span></span> <span class="font-mono" id="on-hand-cash"></span></p><p class="flex justify-between font-bold"><span>Diferença em Dinheiro:<span class="tooltip-icon" data-tooltip="Mostra se faltou (negativo) ou sobrou (positivo) dinheiro no seu caixa. O ideal é que seja zero.">?</span></span> <span class="font-mono" id="cash-diff"></span></p><p class="flex justify-between pt-2 border-t border-gray-600"><span>Vendas vs Entradas:<span class="tooltip-icon" data-tooltip="Compara o dinheiro que entrou com o faturamento do mês. Negativo = menos dinheiro entrou (vendas a prazo). Positivo = mais dinheiro entrou (dívidas antigas recebidas, etc.).">?</span></span> <span class="font-mono" id="sales-vs-cashin"></span></p></div>
+                    <div class="result-card space-y-3"><h3 class="text-lg font-semibold text-white border-b border-gray-700 pb-2">Resumo de Estoque</h3><p class="flex justify-between"><span>Valor do Estoque Inicial:<span class="tooltip-icon" data-tooltip="O custo total das mercadorias que você tinha no início do mês (baseado no preço de compra).">?</span></span> <span class="font-mono" id="initial-stock-value"></span></p><p class="flex justify-between"><span>Valor do Estoque Final:<span class="tooltip-icon" data-tooltip="O custo total das mercadorias que sobraram no final do mês. Mostra o capital que você tem investido em produtos.">?</span></span> <span class="font-mono" id="final-stock-value"></span></p><p class="flex justify-between font-bold text-green-400"><span>Valor Potencial do Estoque:<span class="tooltip-icon" data-tooltip="O valor total que você pode faturar se vender todo o seu estoque final pelo preço de venda atual. É uma projeção de receita futura.">?</span></span> <span class="font-mono" id="potential-stock-value"></span></p></div>
+                    <div class="result-card space-y-3"><h3 class="text-lg font-semibold text-white border-b border-gray-700 pb-2">Saúde Financeira</h3><p class="flex justify-between"><span>Entradas em Caixa:<span class="tooltip-icon" data-tooltip="O montante total de dinheiro que entrou no seu negócio durante o mês.">?</span></span> <span class="font-mono" id="health-cash-in"></span></p><p class="flex justify-between"><span>Total de Despesas (Pagas + Pagar):<span class="tooltip-icon" data-tooltip="A soma de todas as suas obrigações financeiras do mês, tanto as que já foram quitadas quanto as pendentes.">?</span></span> <span class="font-mono" id="health-total-expenses"></span></p><p class="flex justify-between font-bold"><span>Situação de Pagamentos:<span class="tooltip-icon" data-tooltip="'OK' significa que as entradas foram suficientes para cobrir todas as despesas. 'Alerta' indica que o dinheiro que entrou não foi o bastante para pagar todas as contas do mês.">?</span></span> <span class="font-mono" id="health-status"></span></p></div>
+                    <div class="result-card space-y-3 md:col-span-2"><h3 class="text-lg font-semibold text-white border-b border-gray-700 pb-2">Resumo de Notas Fiscais</h3><p class="flex justify-between"><span>Notas Recebidas no Mês:<span class="tooltip-icon" data-tooltip="Valor total das notas fiscais de compra de mercadoria recebidas de fornecedores este mês.">?</span></span> <span class="font-mono" id="result-notas-recebidas"></span></p><p class="flex justify-between"><span>Total de Notas Acumuladas:<span class="tooltip-icon" data-tooltip="Dívida total com fornecedores (notas em aberto), somando as notas do mês com saldos anteriores.">?</span></span> <span class="font-mono" id="result-notas-acumuladas"></span></p></div>
+                </div>
+
+                <div class="text-center pt-4">
+                     <button type="button" id="pdf-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-transform transform hover:scale-105">
+                        Gerar PDF
+                    </button>
+                </div>
+            </div>
+        </main>
+        
+        <footer class="text-center text-gray-500 mt-12 pb-4 text-sm">
+            <p>&copy; 2024 - Sistema de Fechamento de Caixa. Todos os direitos reservados.</p>
+        </footer>
+    </div>
+
+    <script>
+        let calculatedResults = {};
+
+        const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        const formatKg = (value) => `${value.toFixed(3)} kg`;
+        const getNum = (id) => parseFloat(document.getElementById(id).value) || 0;
+
+        const products = [
+            { id: 'porco-desossado', name: 'Porco Desossado', suppliers: 2 },
+            { id: 'porco-osso', name: 'Porco com Osso', suppliers: 2 },
+            { id: 'toucinho', name: 'Toucinho', suppliers: 2 },
+            { id: 'carneiro-coxao', name: 'Coxão de Carneiro', suppliers: 1 },
+            { id: 'carneiro-geral', name: 'Carneiro (Outros)', suppliers: 1 }
+        ];
+
+        document.getElementById('calculate-btn').addEventListener('click', () => {
+            let totalExpectedRevenue = 0;
+            let initialStockValue = 0;
+            let finalStockValue = 0;
+            let potentialStockValue = 0;
+            let salesDataForPdf = [];
+
+            products.forEach(p => {
+                const initialStock = getNum(`initial-stock-${p.id}`);
+                const remaining = getNum(`remaining-${p.id}`);
+                const price = getNum(`price-${p.id}`);
+
+                let entries = 0;
+                let cost = 0;
+
+                if (p.suppliers === 2) {
+                    const entriesA = getNum(`entries-${p.id}-a`);
+                    const costA = getNum(`cost-${p.id}-a`);
+                    const entriesB = getNum(`entries-${p.id}-b`);
+                    const costB = getNum(`cost-${p.id}-b`);
+                    
+                    entries = entriesA + entriesB;
+                    
+                    // Calculate weighted average cost for the new purchases for this month
+                    if (entries > 0) {
+                        cost = ((entriesA * costA) + (entriesB * costB)) / entries;
+                    } else {
+                        // If no new entries, there's no new average cost.
+                        // We need a cost to value initial/final stock based on the app's logic.
+                        // We'll take the first cost available as a fallback.
+                        cost = costA || costB || 0;
+                    }
+
+                } else { // suppliers === 1 for lamb
+                    entries = getNum(`entries-${p.id}`);
+                    cost = getNum(`cost-${p.id}`);
+                }
+
+                const sold = initialStock + entries - remaining;
+                document.getElementById(`sold-${p.id}`).value = sold > 0 ? sold.toFixed(3) : '0.000';
+
+                totalExpectedRevenue += sold * price;
+                // This is a simplification: it assumes the initial stock's cost is the same as this month's (average) cost.
+                // It maintains consistency with the original logic.
+                initialStockValue += initialStock * cost;
+                finalStockValue += remaining * cost;
+                potentialStockValue += remaining * price;
+                
+                if (sold > 0) {
+                    salesDataForPdf.push({
+                        name: p.name,
+                        soldKg: sold,
+                        revenue: sold * price
+                    });
+                }
+            });
+
+            const totalRevenue = getNum('total-revenue');
+            const cashIn = getNum('cash-in');
+            const expensesPaid = getNum('expenses-paid');
+            const cashOnHand = getNum('cash-on-hand');
+            const expensesToPay = getNum('expenses-to-pay');
+            const notasRecebidas = getNum('notas-recebidas');
+            const notasAcumuladas = getNum('notas-acumuladas');
+
+            const revenueDiff = totalRevenue - totalExpectedRevenue;
+            const availableCash = cashIn - expensesPaid;
+            const cashDiff = cashOnHand - availableCash;
+            const canPayAllExpenses = cashIn >= (expensesPaid + expensesToPay);
+            const salesVsCashinDiff = cashIn - totalRevenue;
+
+            let criticalIssues = [];
+            let warnings = [];
+
+            if (!canPayAllExpenses) {
+                criticalIssues.push({ text: `As entradas em caixa (${formatCurrency(cashIn)}) não são suficientes para cobrir o total de despesas (${formatCurrency(expensesPaid + expensesToPay)}).`, icon: '🔴'});
+            }
+            if (cashDiff < -0.01) {
+                criticalIssues.push({ text: `Faltou ${formatCurrency(Math.abs(cashDiff))} no caixa (contado: ${formatCurrency(cashOnHand)}, calculado: ${formatCurrency(availableCash)}).`, icon: '🔴'});
+            }
+            if (cashDiff > 0.01) {
+                warnings.push({ text: `Sobrou ${formatCurrency(cashDiff)} no caixa. É preciso investigar a origem dessa diferença.`, icon: '🟡'});
+            }
+            if (Math.abs(revenueDiff) > 0.01) {
+                warnings.push({ text: `Diferença de ${formatCurrency(revenueDiff)} entre o faturamento esperado e o informado.`, icon: '🟡'});
+            }
+            if (salesVsCashinDiff < -0.01) {
+                warnings.push({ text: `Entrou ${formatCurrency(Math.abs(salesVsCashinDiff))} a menos no caixa do que o faturado (vendas a prazo/fiado?).`, icon: '🟡'});
+            } else if (salesVsCashinDiff > 0.01) {
+                warnings.push({ text: `Entrou ${formatCurrency(salesVsCashinDiff)} a mais no caixa do que o faturado (recebimento de dívidas antigas?).`, icon: '🟡'});
+            }
+            
+            let status = 'verde';
+            if (criticalIssues.length > 0) {
+                status = 'vermelho';
+            } else if (warnings.length > 0) {
+                status = 'amarelo';
+            }
+
+            calculatedResults = {
+                totalExpectedRevenue, totalRevenue, revenueDiff,
+                availableCash, cashOnHand, cashDiff,
+                initialStockValue, finalStockValue, potentialStockValue,
+                cashIn, totalExpenses: expensesPaid + expensesToPay, canPayAllExpenses,
+                salesVsCashinDiff, salesDataForPdf,
+                status, criticalIssues, warnings,
+                notasRecebidas, notasAcumuladas
+            };
+            
+            displayResults();
+        });
+        
+        function displayResults() {
+            const {
+                totalExpectedRevenue, totalRevenue, revenueDiff,
+                availableCash, cashOnHand, cashDiff, salesVsCashinDiff,
+                initialStockValue, finalStockValue, potentialStockValue,
+                cashIn, totalExpenses, canPayAllExpenses,
+                status, criticalIssues, warnings,
+                notasRecebidas, notasAcumuladas
+            } = calculatedResults;
+
+            document.getElementById('results-section').classList.remove('hidden');
+            document.getElementById('ai-analysis-container').classList.remove('hidden');
+            document.getElementById('ai-analysis-card').classList.add('hidden');
+            document.getElementById('ai-analysis-content').innerHTML = '';
+
+            const statusTitle = document.getElementById('status-title');
+            const statusSubtitle = document.getElementById('status-subtitle');
+            const statusCard = document.getElementById('status-card');
+            const pointsListDiv = document.getElementById('points-list');
+            pointsListDiv.innerHTML = '';
+            
+            if (status === 'verde') {
+                statusTitle.textContent = 'Caixa Fechou no Verde!';
+                statusTitle.className = 'text-2xl font-bold text-green-400';
+                statusSubtitle.textContent = 'Parabéns! Todas as contas e o estoque estão consistentes e saudáveis.';
+                statusCard.className = 'result-card text-center p-6 border-2 border-green-500';
+            } else if (status === 'amarelo') {
+                statusTitle.textContent = 'Caixa Fechou no Amarelo!';
+                statusTitle.className = 'text-2xl font-bold text-yellow-400';
+                statusSubtitle.textContent = 'Financeiramente saudável, mas com pontos de atenção para sua gestão:';
+                statusCard.className = 'result-card text-center p-6 border-2 border-yellow-500';
+                warnings.forEach(item => {
+                    const p = document.createElement('p');
+                    p.innerHTML = `${item.icon} <span class="ml-2">${item.text}</span>`;
+                    p.className = 'p-2 bg-gray-700/50 rounded-md';
+                    pointsListDiv.appendChild(p);
+                });
+            } else {
+                statusTitle.textContent = 'Caixa Fechou no Vermelho!';
+                statusTitle.className = 'text-2xl font-bold text-red-400';
+                statusSubtitle.textContent = 'Foram encontrados os seguintes problemas críticos:';
+                statusCard.className = 'result-card text-center p-6 border-2 border-red-500';
+                criticalIssues.forEach(item => {
+                    const p = document.createElement('p');
+                    p.innerHTML = `${item.icon} <span class="ml-2">${item.text}</span>`;
+                    p.className = 'p-2 bg-gray-700/50 rounded-md';
+                    pointsListDiv.appendChild(p);
+                });
+            }
+
+            document.getElementById('total-sold').textContent = formatCurrency(totalExpectedRevenue);
+            document.getElementById('expected-revenue').textContent = formatCurrency(totalExpectedRevenue);
+            document.getElementById('reported-revenue').textContent = formatCurrency(totalRevenue);
+            const revenueDiffEl = document.getElementById('revenue-diff');
+            revenueDiffEl.textContent = formatCurrency(revenueDiff);
+            revenueDiffEl.className = Math.abs(revenueDiff) > 0.01 ? 'text-yellow-400 font-mono' : 'text-green-400 font-mono';
+            
+            document.getElementById('available-cash').textContent = formatCurrency(availableCash);
+            document.getElementById('on-hand-cash').textContent = formatCurrency(cashOnHand);
+            const cashDiffEl = document.getElementById('cash-diff');
+            cashDiffEl.textContent = formatCurrency(cashDiff);
+            if (cashDiff < -0.01) cashDiffEl.className = 'text-red-400 font-mono';
+            else if (cashDiff > 0.01) cashDiffEl.className = 'text-yellow-400 font-mono';
+            else cashDiffEl.className = 'text-green-400 font-mono';
+            
+            const salesVsCashinEl = document.getElementById('sales-vs-cashin');
+            salesVsCashinEl.textContent = formatCurrency(salesVsCashinDiff);
+            if(salesVsCashinDiff > 0.01) salesVsCashinEl.className = 'font-mono text-cyan-400';
+            else if (salesVsCashinDiff < -0.01) salesVsCashinEl.className = 'font-mono text-amber-400';
+            else salesVsCashinEl.className = 'font-mono';
+
+            document.getElementById('initial-stock-value').textContent = formatCurrency(initialStockValue);
+            document.getElementById('final-stock-value').textContent = formatCurrency(finalStockValue);
+            document.getElementById('potential-stock-value').textContent = formatCurrency(potentialStockValue);
+            document.getElementById('health-cash-in').textContent = formatCurrency(cashIn);
+            document.getElementById('health-total-expenses').textContent = formatCurrency(totalExpenses);
+            const healthStatusEl = document.getElementById('health-status');
+            healthStatusEl.textContent = canPayAllExpenses ? 'OK' : 'Crítico';
+            healthStatusEl.className = canPayAllExpenses ? 'text-green-400 font-mono' : 'text-red-400 font-mono';
+
+            document.getElementById('result-notas-recebidas').textContent = formatCurrency(notasRecebidas);
+            document.getElementById('result-notas-acumuladas').textContent = formatCurrency(notasAcumuladas);
+
+            document.getElementById('results-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        document.getElementById('pdf-btn').addEventListener('click', () => {
+            const { jsPDF } = window.jspdf;
+            if (Object.keys(calculatedResults).length === 0) {
+                alert('Por favor, primeiro clique em "Fechar Caixa" para calcular os resultados.');
+                return;
+            }
+            const doc = new jsPDF();
+
+            const drawSection = (title, data, startY, isMono = false) => {
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(14);
+                doc.text(title, 20, startY);
+                let currentY = startY + 8;
+                doc.setFontSize(11);
+                data.forEach(([label, value]) => {
+                    doc.setFont('helvetica', 'normal');
+                    doc.text(label, 25, currentY);
+                    doc.setFont(isMono ? 'courier' : 'helvetica', 'normal');
+                    doc.text(String(value), 190, currentY, { align: 'right' });
+                    currentY += 7;
+                });
+                return currentY + 5;
+            };
+
+            doc.setFontSize(18);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Relatório de Fechamento de Caixa - Açougue', 105, 20, { align: 'center' });
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`Período: ${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}`, 105, 28, { align: 'center' });
+
+            let currentY = 45;
+            doc.setFontSize(16);
+            doc.setFont('helvetica', 'bold');
+            if (calculatedResults.status === 'verde') { doc.setTextColor('#22c55e'); doc.text('Status: Caixa Fechou no Verde', 20, currentY); } 
+            else if (calculatedResults.status === 'amarelo') { doc.setTextColor('#f59e0b'); doc.text('Status: Caixa Fechou no Amarelo (Com Atenção)', 20, currentY); } 
+            else { doc.setTextColor('#ef4444'); doc.text('Status: Caixa Fechou no Vermelho (Crítico)', 20, currentY); }
+            doc.setTextColor(0, 0, 0);
+            currentY += 10;
+
+            const allPoints = [...calculatedResults.criticalIssues, ...calculatedResults.warnings];
+            if (allPoints.length > 0) {
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Pontos de Destaque:', 20, currentY);
+                currentY += 6;
+                doc.setFont('helvetica', 'normal');
+                allPoints.forEach(item => {
+                    const cleanedMsg = item.text.replace(/R\$\s/g, 'R$ ');
+                    const splitText = doc.splitTextToSize(cleanedMsg, 165);
+                    doc.text(`- ${splitText}`, 25, currentY);
+                    currentY += (splitText.length * 5);
+                });
+            }
+            currentY += 5;
+
+            // Sales breakdown by product
+            if (calculatedResults.salesDataForPdf.length > 0) {
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(14);
+                doc.text('Vendas por Produto', 20, currentY);
+                currentY += 8;
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'bold');
+                doc.text("Produto", 25, currentY);
+                doc.text("Kg Vendidos", 140, currentY, { align: 'right' });
+                doc.text("Faturamento", 190, currentY, { align: 'right' });
+                currentY += 6;
+                doc.setFont('helvetica', 'normal');
+                 calculatedResults.salesDataForPdf.forEach(item => {
+                    doc.text(item.name, 25, currentY);
+                    doc.setFont('courier', 'normal');
+                    doc.text(formatKg(item.soldKg), 140, currentY, { align: 'right' });
+                    doc.text(formatCurrency(item.revenue), 190, currentY, { align: 'right' });
+                    currentY += 6;
+                });
+            }
+            currentY += 5;
+
+            const salesData = [['Total Vendido (Calculado):', formatCurrency(calculatedResults.totalExpectedRevenue)],['Faturamento Esperado:', formatCurrency(calculatedResults.totalExpectedRevenue)],['Faturamento Informado:', formatCurrency(calculatedResults.totalRevenue)],['Diferença Faturamento:', formatCurrency(calculatedResults.revenueDiff)]];
+            currentY = drawSection('Resumo Geral de Vendas', salesData, currentY, true);
+            const cashData = [['Dinheiro Disponível (Calc.):', formatCurrency(calculatedResults.availableCash)],['Dinheiro em Mãos (Inf.):', formatCurrency(calculatedResults.cashOnHand)],['Diferença em Dinheiro:', formatCurrency(calculatedResults.cashDiff)],['Vendas vs Entradas:', formatCurrency(calculatedResults.salesVsCashinDiff)]];
+            currentY = drawSection('Resumo de Caixa', cashData, currentY, true);
+            const stockData = [['Valor do Estoque Inicial:', formatCurrency(calculatedResults.initialStockValue)],['Valor do Estoque Final:', formatCurrency(calculatedResults.finalStockValue)],['Valor Potencial do Estoque:', formatCurrency(calculatedResults.potentialStockValue)]];
+            currentY = drawSection('Resumo de Estoque', stockData, currentY, true);
+            const healthData = [['Entradas em Caixa:', formatCurrency(calculatedResults.cashIn)],['Total de Despesas:', formatCurrency(calculatedResults.totalExpenses)],['Situação de Pagamentos:', calculatedResults.canPayAllExpenses ? 'OK' : 'Crítico']];
+            currentY = drawSection('Saúde Financeira', healthData, currentY, true);
+            const invoiceData = [['Notas Recebidas no Mês:', formatCurrency(calculatedResults.notasRecebidas)],['Total de Notas Acumuladas:', formatCurrency(calculatedResults.notasAcumuladas)]];
+            currentY = drawSection('Resumo de Notas Fiscais', invoiceData, currentY, true);
+
+            doc.save(`fechamento-caixa-acougue-${new Date().toISOString().slice(0, 10)}.pdf`);
+        });
+
+        document.getElementById('ai-analysis-btn').addEventListener('click', async () => {
+            const aiCard = document.getElementById('ai-analysis-card');
+            const aiContent = document.getElementById('ai-analysis-content');
+            const aiButton = document.getElementById('ai-analysis-btn');
+
+            aiCard.classList.remove('hidden');
+            aiContent.innerHTML = `<div class="flex items-center justify-center p-4"><svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span>Analisando dados e gerando dicas...</span></div>`;
+            aiButton.disabled = true;
+            aiButton.classList.add('opacity-50', 'cursor-not-allowed');
+
+            const { status, criticalIssues, warnings, canPayAllExpenses } = calculatedResults;
+            let statusText = '';
+            if (status === 'verde') statusText = "O caixa fechou no verde (sucesso).";
+            if (status === 'amarelo') statusText = "O caixa fechou no amarelo (com pontos de atenção).";
+            if (status === 'vermelho') statusText = "O caixa fechou no vermelho (crítico).";
+            const allPointsText = [...criticalIssues, ...warnings].map(p => p.text).join(' ');
+
+            const prompt = `Você é um consultor de negócios especialista em açougues no Brasil. Analise os seguintes dados de fechamento de caixa e forneça uma resposta em Markdown simples. A resposta deve ter duas seções: **Análise da Situação** (parágrafo curto sobre a saúde financeira do mês) e **Plano de Ação** (lista numerada com 3 dicas práticas baseadas nos problemas identificados). Se o status for 'verde', foque em otimização. Se 'amarelo', em corrigir inconsistências. Se 'vermelho', em ações urgentes para reverter a crise. Dados: Status Geral: ${statusText}. Capacidade de Pagar Despesas: ${canPayAllExpenses ? 'Suficiente' : 'Insuficiente'}. Pontos de Destaque: ${allPointsText || "Nenhum ponto de destaque."}. Seja direto e motivador.`;
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) });
+                if (!response.ok) throw new Error(`Erro na API: ${response.status}`);
+                const result = await response.json();
+                const candidate = result.candidates?.[0];
+                if (candidate && candidate.content?.parts?.[0]?.text) {
+                    let text = candidate.content.parts[0].text;
+                    let html = text.replace(/\*\*(.*?)\*\*/g, '<strong class="text-white text-base">$1</strong>').replace(/(\n\s*\d\.\s)/g, '<br><br>$1').replace(/\n/g, '<br>');
+                    aiContent.innerHTML = `<div class="text-gray-300 leading-relaxed">${html}</div>`;
+                } else { throw new Error("Resposta da IA inválida."); }
+            } catch (error) {
+                console.error("Erro ao chamar a API Gemini:", error);
+                aiContent.innerHTML = `<div class="text-red-400 text-center p-4"><p><strong>Ocorreu um erro ao buscar a análise.</strong></p><p class="text-sm mt-2">Por favor, tente novamente mais tarde.</p></div>`;
+            } finally {
+                aiButton.disabled = false;
+                aiButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                aiCard.scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+    </script>
+</body>
+</html>
+", there is a small error in the JavaScript code of the "Fechamento de Caixa - Água e Gás" document ("fechamento_caixa.html") that I have in my history. I would like you to fix this bug. The problem is in the line where it says "const { jsPDF } = window.jspdf;", which is incorrect, it should be "const { jsPDF } = jspdf;".
+
